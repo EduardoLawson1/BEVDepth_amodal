@@ -306,6 +306,8 @@ class DepthAggregation(nn.Module):
 
     @autocast(False)
     def forward(self, x):
+        #mudei
+        self.to(x.dtype) 
         x = self.reduce_conv(x)
         x = self.conv(x) + x
         x = self.out_conv(x)
@@ -441,13 +443,19 @@ class BaseLSSFPN(nn.Module):
         # B x N x D x H x W x 3
         points = self.frustum
         ida_mat = ida_mat.view(batch_size, num_cams, 1, 1, 1, 4, 4)
-        points = ida_mat.inverse().matmul(points.unsqueeze(-1))
+        #Mudei
+        #points = ida_mat.inverse().matmul(points.unsqueeze(-1))
+        # Move para CPU, inverte, e volta para GPU:
+        points = ida_mat.cpu().inverse().to(ida_mat.device).matmul(points.unsqueeze(-1))
         # cam_to_ego
         points = torch.cat(
             (points[:, :, :, :, :, :2] * points[:, :, :, :, :, 2:3],
              points[:, :, :, :, :, 2:]), 5)
+        
 
-        combine = sensor2ego_mat.matmul(torch.inverse(intrin_mat))
+        #Mudei
+        #combine = sensor2ego_mat.matmul(torch.inverse(intrin_mat))
+        combine = sensor2ego_mat.matmul(torch.inverse(intrin_mat.cpu()).to(sensor2ego_mat.device))
         points = combine.view(batch_size, num_cams, 1, 1, 1, 4,
                               4).matmul(points)
         if bda_mat is not None:
